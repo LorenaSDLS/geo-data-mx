@@ -20,7 +20,7 @@ from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_ME
 def main():
     # datos del dataset de clima
     df = load_csv(CSV_CLIMA)
-    print (df.head(5))
+    #print (df.head(5))
     df_est = df["Estacion"].nunique()
     print(f"Número de estaciones únicas: {df_est}")
     df_total = len(df) // 3
@@ -32,7 +32,7 @@ def main():
     shp_path = find_first_shp(EXTRACTED_DIVISION)
     gdf_municipios = load_shapefile(shp_path)
 
-    print(gdf_municipios.head(3))
+    ##print(gdf_municipios.head(3))
     print(f"Total de municipios en shapefile: {len(gdf_municipios)}")
 
     # Datos del shapefile de municipios
@@ -40,8 +40,6 @@ def main():
     print(geo.head(5))
     geo_cant = geo["Estacion"].nunique()
     print(f"Número de estaciones únicas (GeoDataFrame): {geo_cant}")
-
- 
 
     union = asignar_puntos_a_municipios(geo, gdf_municipios)
     print(union.head(5))

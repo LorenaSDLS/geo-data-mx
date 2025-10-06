@@ -25,8 +25,8 @@ def asignar_puntos_a_municipios(df, gdf_muni):
     gdf_joined = gpd.sjoin(gdf_points, gdf_muni, how="left", predicate="intersects")
     municipios_con_puntos = gdf_joined["NOMGEO"].dropna().unique()
     gdf_muni["tiene_punto"] = gdf_muni["NOMGEO"].isin(municipios_con_puntos)
-    print(f"✅ Se asignaron municipios a {gdf_joined['NOMGEO'].notna().sum()} estaciones de {len(gdf_joined)} totales.")
-    print(f"⚠️ {gdf_joined['NOMGEO'].isna().sum()} estaciones quedaron fuera de algún polígono.")
+    print(f"Se asignaron municipios a {gdf_joined['NOMGEO'].notna().sum()} estaciones de {len(gdf_joined)} totales.")
+    print(f"{gdf_joined['NOMGEO'].isna().sum()} estaciones quedaron fuera de algún polígono.")
     return gdf_muni
 
 def municipios_sin_puntos(gdf_muni):
