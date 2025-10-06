@@ -14,7 +14,7 @@ from utils.load_data import load_csv, csv_to_gdf_points, load_shapefile
 from utils.file_ops import ensure_dir, extract_zip, find_first_shp
 from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, BUFFER_MET, CRS_GEOG, CRS_METRIC
 from utils.analysis import data_resume
-from utils.visualization import (plot_municipios_y_puntos, plot_municipios_sin_puntos, plot_mapa_cobertura)
+from utils.visualization import (plot_mapa_cobertura)
 from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_METRIC
 
 def main():
