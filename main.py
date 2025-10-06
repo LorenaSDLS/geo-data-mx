@@ -8,81 +8,61 @@ import os
 import geopandas as gpd
 from shapely.geometry import Point
 from pathlib import Path 
-from utils import asignar_puntos_a_municipios
-from utils import municipios_sin_puntos
+from utils.utils import asignar_puntos_a_municipios
+from utils.utils import municipios_sin_puntos
+from utils.load_data import load_csv, csv_to_gdf_points, load_shapefile
+from utils.file_ops import ensure_dir, extract_zip, find_first_shp
+from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, BUFFER_MET, CRS_GEOG, CRS_METRIC
+from utils.analysis import data_resume
+from utils.visualization import (plot_municipios_y_puntos, plot_municipios_sin_puntos, plot_mapa_cobertura)
+from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_METRIC
 
+def main():
+    # datos del dataset de clima
+    df = load_csv(CSV_CLIMA)
+    print (df.head(5))
+    df_est = df["Estacion"].nunique()
+    print(f"Número de estaciones únicas: {df_est}")
+    df_total = len(df) // 3
+    print(f"Número total de registros (3 por estación): {df_total}")
+    df_coordenadas = df[['Latitud', 'Longitud']].drop_duplicates().shape[0]
+    print(f"Número de coordenadas únicas: {df_coordenadas}")
 
+    ensure_dir(EXTRACTED_DIVISION)
+    shp_path = find_first_shp(EXTRACTED_DIVISION)
+    gdf_municipios = load_shapefile(shp_path)
 
-# Definir rutas de forma portable
-base_path = Path("/Users/lorenasolis/EstInv")
-csv_path = base_path / "df_limpio_master_corregido.csv"
-zip_path = base_path / "division_politica.zip"
-extract_path = base_path / "division_politica"
+    print(gdf_municipios.head(3))
+    print(f"Total de municipios en shapefile: {len(gdf_municipios)}")
 
-# --- 1. Cargar el dataset de temperaturas ---
-df = pd.read_csv(csv_path)
-print(f"Total de filas: {len(df)}")
+    # Datos del shapefile de municipios
+    geo = csv_to_gdf_points(df) #gdf puntos
+    print(geo.head(5))
+    geo_cant = geo["Estacion"].nunique()
+    print(f"Número de estaciones únicas (GeoDataFrame): {geo_cant}")
 
-num_estaciones = len(df) // 3
-print(f"Total de estaciones: {num_estaciones}")
+ 
 
-num_municipios = df[['Longitud','Latitud']].drop_duplicates().shape[0]
-print(f"Total de municipios: {num_municipios}")
+    union = asignar_puntos_a_municipios(geo, gdf_municipios)
+    print(union.head(5))
 
-# --- 2. Extraer archivos de ZIP si no existe carpeta ---
-if not extract_path.exists():
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_path)
-        print("Archivos extraídos.")
-else:
-    print("Carpeta ya existe, no se vuelve a extraer.")
+    plot_mapa_cobertura(union, geo)
 
-# Listar archivos extraídos
-for file in extract_path.rglob("*"):
-    print(" ", file.name)
+    # Cantidad de municipios con puntos
+    municipios_con = union["tiene_punto"].sum()  # True se cuenta como 1
 
-# --- 3. Cargar shapefile ---
-shp_files = list(extract_path.rglob("*.shp"))
-if not shp_files:
-    raise FileNotFoundError("No se encontró ningún archivo .shp en la carpeta extraída.")
+# Cantidad de municipios sin puntos
+    municipios_sin = (~union["tiene_punto"]).sum()  # False se invierte a True y se cuenta
 
-gdf = gpd.read_file(shp_files[0])  # usa el primero encontrado
-#print(gdf.head())
-num_municipios_shp = gdf['NOMGEO'].nunique()
-print(f"Total de municipios en shapefile: {num_municipios_shp}")
+# Total de municipios
+    total_municipios = len(union)
 
-# --- 4. Visualizar ---
-#fig, ax = plt.subplots(figsize=(10, 10))
-#gdf.plot(ax=ax, edgecolor="black", facecolor="lightblue")
-#ax.set_title("División política de municipios", fontsize=14)
-#plt.show()
+# Porcentajes
+    porcentaje_con = municipios_con / total_municipios * 100
+    porcentaje_sin = municipios_sin / total_municipios * 100
 
-gdf_joined = asignar_puntos_a_municipios(df, gdf)
+    print(f"Municipios con puntos de temperatura (verde): {municipios_con} ({porcentaje_con:.2f}%)")
+    print(f"Municipios sin puntos de temperatura (gris): {municipios_sin} ({porcentaje_sin:.2f}%)")
 
-gdf_sin_puntos = municipios_sin_puntos(gdf, gdf_joined, columna_nombre="NOMGEO")
-print(f"Total de municipios sin puntos: {len(gdf_sin_puntos)}")
-print(gdf_sin_puntos[["NOMGEO"]])  # muestra nombres de municipios sin puntos
-
-
-ax = gdf.plot(figsize=(10,8), color="white", edgecolor="black")
-gdf_joined.plot(ax=ax, color="purple", markersize=5)  # <- aquí los puntos
-ax.set_title("Municipios y estaciones de temperatura")
-plt.show()
-
-gdf_sin_puntos = municipios_sin_puntos(gdf, gdf_joined, columna_nombre="NOMGEO")
-print(f"Total de municipios sin puntos: {len(gdf_sin_puntos)}")
-print(gdf_sin_puntos[["NOMGEO"]])  # muestra nombres de municipios sin puntos
-ax = gdf.plot(figsize=(10,8), color="white", edgecolor="black")
-gdf_sin_puntos.plot(ax=ax, color="red", markersize=20)
-ax.set_title("Municipios sin estaciones de temperatura")
-plt.show()
-# Crear columna indicando si el municipio tiene puntos
-gdf["tiene_punto"] = gdf["NOMGEO"].isin(gdf_joined["NOMGEO"])
-colors = {True: "green", False: "grey"}
-gdf["color"] = gdf["tiene_punto"].map(colors)
-# Plotear
-fig, ax = plt.subplots(figsize=(12,10))
-gdf.plot(ax=ax, color=gdf["color"], edgecolor="black")
-ax.set_title("Municipios con (verde) y sin (gris) estaciones", fontsize=14)
-plt.show()
-
+if __name__ == "__main__":
+    main()
