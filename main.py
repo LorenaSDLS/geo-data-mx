@@ -20,7 +20,7 @@ from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_ME
 def main():
     # datos del dataset de clima
     df = load_csv(CSV_CLIMA)
-    #print (df.head(5))
+    print (df.head(5))
     df_est = df["Estacion"].nunique()
     print(f"Número de estaciones únicas: {df_est}")
     df_total = len(df) // 3
