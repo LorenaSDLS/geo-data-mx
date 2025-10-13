@@ -15,7 +15,7 @@ from utils.file_ops import ensure_dir, extract_zip, find_first_shp
 from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, BUFFER_MET, CRS_GEOG, CRS_METRIC
 from utils.analysis import data_resume
 from utils.visualization import (plot_mapa_cobertura)
-from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_METRIC
+from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_METRIC, EXTRACTED_USO_SUELO, ZIP_USO_SUELO
 
 def main():
     # datos del dataset de clima
@@ -61,6 +61,35 @@ def main():
 
     print(f"Municipios con puntos de temperatura (verde): {municipios_con} ({porcentaje_con:.2f}%)")
     print(f"Municipios sin puntos de temperatura (gris): {municipios_sin} ({porcentaje_sin:.2f}%)")
+
+#-------------------------Leer el shapefile de uso de suelo
+
+    
+    extract_zip(ZIP_USO_SUELO, EXTRACTED_USO_SUELO)
+    ensure_dir(EXTRACTED_USO_SUELO)
+    print(list(EXTRACTED_USO_SUELO.iterdir()))
+
+    shp_path_suelo = find_first_shp(EXTRACTED_USO_SUELO)
+    gdf_suelo = load_shapefile(shp_path_suelo)
+    print(f"Total de polígonos de uso de suelo en shapefile: {len(gdf_suelo)}")
+    print(gdf_suelo.head(3))
+    #print(gdf_suelo['DESCRIPCIO'].unique())
+
+    # Plot simple
+
+#gdf_suelo['DESCRIPCIO'].value_counts()  # ver categorías
+    gdf_urban = gdf_suelo[gdf_suelo['DESCRIPCIO'] == 'ASENTAMIENTOS HUMANOS']  # ejemplo
+    # Comprobar que no esté vacío
+    print(f"Número de polígonos urbanos: {len(gdf_urban)}")
+    fig, ax = plt.subplots(figsize=(10, 10))
+    gdf_urban.plot(ax=ax, color='red', edgecolor='black')
+    ax.set_title("Mapa de uso de suelo")
+    plt.show()
+
+
+ 
+
+  
 
 if __name__ == "__main__":
     main()

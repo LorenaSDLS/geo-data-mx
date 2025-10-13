@@ -24,3 +24,4 @@ def plot_mapa_cobertura(gdf_muni, gdf_puntos):
     plt.xlabel("Longitud")
     plt.ylabel("Latitud")
     plt.show()
+
