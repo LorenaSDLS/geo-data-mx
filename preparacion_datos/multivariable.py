@@ -8,7 +8,7 @@ import os
 import geopandas as gpd
 from shapely.geometry import Point
 from pathlib import Path 
-from utils.utils import asignacion_filtrada, preTDA, limpiar_nan
+from utils.utils import asignacion_filtrada, preTDA, limpiar_nan, municipios_similares_a
 from utils.load_data import load_csv, csv_to_gdf_points, load_shapefile
 from utils.file_ops import ensure_dir, extract_zip, find_first_shp
 from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, BUFFER_MET, CRS_GEOG, CRS_METRIC
@@ -67,3 +67,6 @@ similarity = TDA_similarity(
 D_multi = similarity.tda_matrix(df1s, df2s)
 similarity.plot(D_multi, title="Similitud Topológica Multivariable")
 
+
+similares = municipios_similares_a(df_todas, "Doctor Coss", variables, top_n=5)
+print("Municipios más similares a Doctor Coss:", similares)

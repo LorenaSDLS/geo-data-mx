@@ -18,6 +18,7 @@ from utils.visualization import (plot_mapa_cobertura)
 from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_METRIC, EXTRACTED_USO_SUELO, ZIP_USO_SUELO
 
 def main():
+
     # datos del dataset de clima
     df = load_csv(CSV_CLIMA)
     print (df.head(5))
@@ -85,6 +86,7 @@ def main():
     gdf_urban.plot(ax=ax, color='red', edgecolor='black')
     ax.set_title("Mapa de uso de suelo")
     plt.show()
+
 
 
  

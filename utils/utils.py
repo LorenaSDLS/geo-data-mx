@@ -2,6 +2,9 @@ import geopandas as gpd
 from shapely.geometry import Point
 from config import CRS_GEOG
 import re
+import pandas as pd
+import numpy as np
+from TDA.tda_similarity import TDA_similarity
 
 
 
@@ -102,3 +105,39 @@ def limpiar_nan(df):
     print(f"{df_clean[columnas_fecha].isna().sum().sum()} valores NaN restantes.")
     return df_clean
 
+def municipios_similares_a(df_todas, municipio_name, variables, top_n=5):
+    """
+    Devuelve los top_n municipios más similares a un municipio dado según las variables.
+    
+    df_todas: dict de DataFrames por variable
+    municipio_name: nombre del municipio de referencia
+    variables: lista de variables usadas en TDA
+    top_n: número de municipios similares a devolver
+    """
+    # Construir df1: el municipio que buscamos
+    df1s = [df_todas[var].loc[[df_todas[var][df_todas[var]['municipio'] == municipio_name].index[0]]] 
+            for var in variables]
+    
+    # df2: todos los municipios posibles
+    df2s = [df_todas[var] for var in variables]
+    
+    serie_cols = list(df_todas[variables[0]].columns[3:])
+    similarity = TDA_similarity(
+        serie_cols=serie_cols,
+        embedding_dimension=30,
+        embedding_time_delay=5,
+        stride=5,
+        n_components=3,
+        metric="wasserstein"
+    )
+    
+    # Calcular distancias
+    D = similarity.tda_matrix(df1s, df2s)
+    
+    # Construir DataFrame con nombres
+    df2_names = df2s[0]['municipio'].tolist()
+    D_df = pd.DataFrame(D, index=[municipio_name], columns=df2_names)
+    
+    # Top_n más similares
+    top_similares = D_df.loc[municipio_name].sort_values().head(top_n).index.tolist()
+    return top_similares
