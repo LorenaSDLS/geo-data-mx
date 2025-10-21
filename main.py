@@ -72,16 +72,27 @@ def main():
     gdf_suelo = load_shapefile(shp_path_suelo)
     print(f"Total de polígonos de uso de suelo en shapefile: {len(gdf_suelo)}")
     print(gdf_suelo.head(3))
+    gdf_suelo = gdf_suelo.to_crs("EPSG:32614")
+    gdf_municipios = gdf_municipios.to_crs("EPSG:32614")
     #print(gdf_suelo['DESCRIPCIO'].unique())
-    gdf_suelo = gdf_suelo.to_crs(gdf_municipios.crs)
-    gdf_union = gpd.sjoin(gdf_suelo, gdf_municipios, how="inner", predicate="intersects")
+    #gdf_suelo = gdf_suelo.to_crs(gdf_municipios.crs)
+    # Intersección entre uso de suelo y municipios
+    gdf_union = gpd.overlay(gdf_suelo, gdf_municipios, how='intersection')
+    #gdf_union = gpd.sjoin(gdf_suelo, gdf_municipios, how="inner", predicate="intersects")
     
 
-    #gdf_union = gdf_union.to_crs(epsg=6372)  # CRS en metros (o UTM local)
-    gdf_union = gdf_union.to_crs("EPSG:32614")  # ejemplo UTM zona 14N
-
     gdf_union["area_km2"] = gdf_union.geometry.area / 10**6
-    print(gdf_union.crs)
+    ## Área total de cada municipio
+    area_total_mun = gdf_union.groupby("NOMGEO")["area_km2"].sum().rename("area_total_mun")
+    gdf_union = gdf_union.merge(area_total_mun, on="NOMGEO")
+    
+    # Calcular porcentaje de cada uso de suelo dentro del municipio
+    gdf_union["porcentaje"] = gdf_union["area_km2"] / gdf_union["area_total_mun"] * 100
+
+    csv_resumen = gdf_union[["NOM_ENT", "NOMGEO", "GRUPO_USO", "area_km2", "porcentaje"]]
+    csv_resumen.to_csv("uso_suelo_con_municipios.csv", index=False)
+
+    gdf_union.to_file("uso_suelo_con_municipios.shp")
 
     # Agrupa por municipio y categoría de uso de suelo
     resumen = (
@@ -89,22 +100,33 @@ def main():
         .sum()
         .reset_index()
 )
+    print(resumen.head(10))
   
     fig, ax = plt.subplots(figsize=(12, 10))
-    gdf_union.plot(
-        column="GRUPO_USO", 
-        ax=ax, 
-        legend=True, 
-        cmap="tab20", 
-        missing_kwds={
-            "color": "lightgrey",
-            "label": "Sin datos de uso de suelo"
-        }
-    )
-    print(resumen.head(10))
 
-    plt.title("Uso de suelo dominante por municipio")
+# Polígonos de uso de suelo
+    gdf_union.plot(
+        column="GRUPO_USO",
+        ax=ax,
+        cmap="tab20",
+        legend=True,
+        missing_kwds={"color": "lightgrey", "label": "Sin datos"}
+)
+
+# Enmallado de los municipios encima
+    gdf_municipios.boundary.plot(ax=ax, edgecolor="black", linewidth=0.8)
+
+    plt.title("Uso de suelo por municipio con enmallado de división territorial")
+    plt.axis("off")
+
+# Guardar figura para frontend
+    #plt.savefig("uso_suelo_municipios.png", dpi=150, bbox_inches='tight')
     plt.show()
+
+
+
+   
+
 
 
 
