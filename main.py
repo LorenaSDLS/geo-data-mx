@@ -15,15 +15,14 @@ from utils.file_ops import ensure_dir, extract_zip, find_first_shp
 from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, BUFFER_MET, CRS_GEOG, CRS_METRIC
 from utils.analysis import data_resume
 from utils.visualization import (plot_mapa_cobertura)
-from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_METRIC, EXTRACTED_USO_SUELO, ZIP_USO_SUELO
+from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_METRIC, EXTRACTED_USO_SUELO, ZIP_USO_SUELO, CSV_CLIMA_ANUAL
 
 def main():
 
     # datos del dataset de clima
-    df = load_csv(CSV_CLIMA)
+    df = load_csv(CSV_CLIMA_ANUAL)
     print (df.head(5))
-    df_est = df["Estacion"].nunique()
-    print(f"Número de estaciones únicas: {df_est}")
+   
     df_total = len(df) // 3
     print(f"Número total de registros (3 por estación): {df_total}")
     df_coordenadas = df[['Latitud', 'Longitud']].drop_duplicates().shape[0]
@@ -39,11 +38,10 @@ def main():
     # Datos del shapefile de municipios
     geo = csv_to_gdf_points(df) #gdf puntos
     print(geo.head(5))
-    geo_cant = geo["Estacion"].nunique()
-    print(f"Número de estaciones únicas (GeoDataFrame): {geo_cant}")
-
+    
     union = asignar_puntos_a_municipios(geo, gdf_municipios)
     print(union.head(5))
+    print(union.columns)
 
     plot_mapa_cobertura(union, geo)
 
@@ -75,23 +73,47 @@ def main():
     print(f"Total de polígonos de uso de suelo en shapefile: {len(gdf_suelo)}")
     print(gdf_suelo.head(3))
     #print(gdf_suelo['DESCRIPCIO'].unique())
+    gdf_suelo = gdf_suelo.to_crs(gdf_municipios.crs)
+    gdf_union = gpd.sjoin(gdf_suelo, gdf_municipios, how="inner", predicate="intersects")
+    
 
-    # Plot simple
+    #gdf_union = gdf_union.to_crs(epsg=6372)  # CRS en metros (o UTM local)
+    gdf_union = gdf_union.to_crs("EPSG:32614")  # ejemplo UTM zona 14N
 
-#gdf_suelo['DESCRIPCIO'].value_counts()  # ver categorías
-    gdf_urban = gdf_suelo[gdf_suelo['DESCRIPCIO'] == 'ASENTAMIENTOS HUMANOS']  # ejemplo
-    # Comprobar que no esté vacío
-    print(f"Número de polígonos urbanos: {len(gdf_urban)}")
-    fig, ax = plt.subplots(figsize=(10, 10))
-    gdf_urban.plot(ax=ax, color='red', edgecolor='black')
-    ax.set_title("Mapa de uso de suelo")
+    gdf_union["area_km2"] = gdf_union.geometry.area / 10**6
+    print(gdf_union.crs)
+
+    # Agrupa por municipio y categoría de uso de suelo
+    resumen = (
+        gdf_union.groupby(["NOM_ENT", "NOMGEO", "GRUPO_USO"])["area_km2"]
+        .sum()
+        .reset_index()
+)
+  
+    fig, ax = plt.subplots(figsize=(12, 10))
+    gdf_union.plot(
+        column="GRUPO_USO", 
+        ax=ax, 
+        legend=True, 
+        cmap="tab20", 
+        missing_kwds={
+            "color": "lightgrey",
+            "label": "Sin datos de uso de suelo"
+        }
+    )
+    print(resumen.head(10))
+
+    plt.title("Uso de suelo dominante por municipio")
     plt.show()
+
+
+
 
 
 
  
 
-  
+
 
 if __name__ == "__main__":
     main()

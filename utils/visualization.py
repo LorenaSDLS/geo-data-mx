@@ -18,7 +18,7 @@ def plot_mapa_cobertura(gdf_muni, gdf_puntos):
     # Municipios con puntos
     gdf_muni[gdf_muni["tiene_punto"]].plot(ax=ax, color="lightgreen", edgecolor="black", label="Con puntos")
     # Puntos de estaciones
-    gdf_puntos.plot(ax=ax, color="red", markersize=2, alpha=0.2, label="Estaciones")
+    gdf_puntos.plot(ax=ax, color="red", markersize=2, alpha=0.8, label="Estaciones")
     plt.legend()
     plt.title("Cobertura de estaciones de temperatura por municipio")
     plt.xlabel("Longitud")

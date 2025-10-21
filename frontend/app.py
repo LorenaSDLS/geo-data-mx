@@ -62,7 +62,8 @@ df_todas, gdf_municipios, variables = cargar_y_preprocesar()
 # ---- Calcular municipios similares (solo cuando se cambia selección) ----
 @st.cache_resource
 def calcular_similares(municipio, df_todas, variables, top_n=5):
-    return municipios_similares_mvp(municipio, df_todas, variables, top_n=top_n)
+    #return municipios_similares_mvp(municipio, df_todas, variables, top_n=top_n)
+    return municipios_similares_a(df_todas, municipio, variables, top_n=top_n)
 
 # ---- Sidebar: Selección de estado y municipio ----
 estado_sel = st.sidebar.selectbox("Selecciona un estado", gdf_municipios['estado'].unique())

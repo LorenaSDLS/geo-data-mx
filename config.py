@@ -8,11 +8,12 @@ PROCESSED_PATH = base_path / "data" / "processed"
 
 
 #Archivos de entradas principales
-CSV_CLIMA = RAW_PATH / "df_limpio_master_corregido.csv"
+CSV_CLIMA = RAW_PATH / "climatologia_limpio.csv"
+CSV_CLIMA_ANUAL = PROCESSED_PATH / "datos_anuales.csv"
 ZIP_DIVISION = RAW_PATH / "division_politica.zip"
-EXTRACTED_DIVISION = RAW_PATH / "division_politica"
+EXTRACTED_DIVISION = RAW_PATH / "divpoli_limpia"
 ZIP_USO_SUELO = RAW_PATH / "uso_de_suelo.zip"
-EXTRACTED_USO_SUELO = RAW_PATH / "uso_de_suelo"
+EXTRACTED_USO_SUELO = RAW_PATH / "uso_de_suelo_limpio"
 
 #Definición de sistemas de coordenadas
 CRS_GEOG = "EPSG:4326" #Lat/lon (WGS84)

@@ -26,11 +26,20 @@ def csv_to_gdf_points(df, lon_col="Longitud", lat_col="Latitud", crs="EPSG:4326"
         gpd.GeoDataFrame: GeoDataFrame de puntos
     
     """
+    # --- Seleccionar columnas relevantes ---
+    cols = [lon_col, lat_col, "Altitud", "Estacion", "Estado", "Municipio"]
+    cols = [c for c in cols if c in df.columns]  # evitar error si falta alguna
+
+     # --- Eliminar duplicados por coordenadas ---
+    df_unique = df[cols].drop_duplicates(subset=[lon_col, lat_col])
+
+
     geo_df = gpd.GeoDataFrame(
-        df,
-        geometry=[Point(xy) for xy in zip(df[lon_col], df[lat_col])],
+        df_unique,
+        geometry=[Point(xy) for xy in zip(df_unique[lon_col], df_unique[lat_col])],
         crs=crs
     )
+    print(f"Reducido de {len(df)} filas a {len(geo_df)} puntos únicos.")
     return geo_df
 
 def load_shapefile(shp_path, crs="EPSG:4326"):

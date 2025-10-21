@@ -9,29 +9,26 @@ from TDA.tda_similarity import TDA_similarity
 
 
 
-def asignar_puntos_a_municipios(df, gdf_muni):
+def asignar_puntos_a_municipios(gdf_points, gdf_muni):
     """
     Marca municipios que tienen al menos un punto de temperatura.
-    Parámetros:
-        df: DataFrame con columnas 'Longitud' y 'Latitud'
-        gdf_muni: GeoDataFrame de municipios
-    Retorna:
-        GeoDataFrame de municipios con columna 'tiene_punto' (True/False)
+    Asume que `gdf_points` ya es un GeoDataFrame con CRS correcto.
     """
-    # --- Crear GeoDataFrame de puntos ---
-    gdf_points = gpd.GeoDataFrame(
-        df.copy(),
-        geometry=[Point(xy) for xy in zip(df["Longitud"], df["Latitud"])],
-        crs=CRS_GEOG
-    )
-    gdf_muni = gdf_muni.to_crs(CRS_GEOG)
-    # Marcar municipios que tienen al menos un punto dentro 
-    gdf_joined = gpd.sjoin(gdf_points, gdf_muni, how="left", predicate="intersects")
+    gdf_muni = gdf_muni.to_crs(gdf_points.crs)
+
+    # --- Spatial join (puntos dentro de polígonos) ---
+    gdf_joined = gpd.sjoin(gdf_points, gdf_muni, how="left", predicate="within")
+
+    # --- Municipios con al menos un punto ---
     municipios_con_puntos = gdf_joined["NOMGEO"].dropna().unique()
     gdf_muni["tiene_punto"] = gdf_muni["NOMGEO"].isin(municipios_con_puntos)
-    print(f"Se asignaron municipios a {gdf_joined['NOMGEO'].notna().sum()} estaciones de {len(gdf_joined)} totales.")
+
+    # --- Estadísticas ---
+    print(f"Se asignaron {len(municipios_con_puntos)} municipios con puntos.")
     print(f"{gdf_joined['NOMGEO'].isna().sum()} estaciones quedaron fuera de algún polígono.")
+
     return gdf_muni
+
 
 def municipios_sin_puntos(gdf_muni):
     """
@@ -115,17 +112,24 @@ def municipios_similares_a(df_todas, municipio_name, variables, top_n=5):
     top_n: número de municipios similares a devolver
     """
     # Construir df1: el municipio que buscamos
-    df1s = [df_todas[var].loc[[df_todas[var][df_todas[var]['municipio'] == municipio_name].index[0]]] 
-            for var in variables]
-    
+    df1s = []
+    for var in variables:
+        df_var = df_todas[var]
+        df_muni = df_var[df_var['municipio'] == municipio_name]
+        
+        if df_muni.empty:
+            raise ValueError(f"El municipio '{municipio_name}' no se encontró en la variable '{var}'")
+
+        df1s.append(df_muni.iloc[[0]])  # usa iloc por claridad
+
     # df2: todos los municipios posibles
     df2s = [df_todas[var] for var in variables]
     
     serie_cols = list(df_todas[variables[0]].columns[3:])
     similarity = TDA_similarity(
         serie_cols=serie_cols,
-        embedding_dimension=30,
-        embedding_time_delay=5,
+        embedding_dimension=100,
+        embedding_time_delay=10,
         stride=5,
         n_components=3,
         metric="wasserstein"
