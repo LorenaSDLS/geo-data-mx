@@ -6,3 +6,23 @@
 *.shx
 *.xml
 venv311/
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Entornos virtuales
+venv/
+.env/
+
+# Archivos temporales de sistema
+.DS_Store
+
+# Datos generados automáticamente
+data/matriz/
+debug_top*.parquet
+
+# Archivos de salida de Streamlit o logs
+*.log
+.cache/

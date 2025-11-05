@@ -18,9 +18,9 @@ from utils.visualization import (plot_mapa_cobertura)
 from config import CSV_CLIMA, ZIP_DIVISION, EXTRACTED_DIVISION, CRS_GEOG, CRS_METRIC, EXTRACTED_USO_SUELO, ZIP_USO_SUELO, CSV_CLIMA_ANUAL
 
 def main():
-
+    """
     # datos del dataset de clima
-    df = load_csv(CSV_CLIMA_ANUAL)
+    df = load_csv(CSV_CLIMA)
     print (df.head(5))
    
     df_total = len(df) // 3
@@ -43,25 +43,27 @@ def main():
     print(union.head(5))
     print(union.columns)
 
-    plot_mapa_cobertura(union, geo)
+   #plot_mapa_cobertura(union, geo)
 
     # Cantidad de municipios con puntos
-    municipios_con = union["tiene_punto"].sum()  # True se cuenta como 1
+    #municipios_con = union["tiene_punto"].sum()  # True se cuenta como 1
 
 # Cantidad de municipios sin puntos
-    municipios_sin = (~union["tiene_punto"]).sum()  # False se invierte a True y se cuenta
+    #municipios_sin = (~union["tiene_punto"]).sum()  # False se invierte a True y se cuenta
 
 # Total de municipios
-    total_municipios = len(union)
+    #total_municipios = len(union)
 
 # Porcentajes
-    porcentaje_con = municipios_con / total_municipios * 100
-    porcentaje_sin = municipios_sin / total_municipios * 100
+    #porcentaje_con = municipios_con / total_municipios * 100
+    #porcentaje_sin = municipios_sin / total_municipios * 100
 
-    print(f"Municipios con puntos de temperatura (verde): {municipios_con} ({porcentaje_con:.2f}%)")
-    print(f"Municipios sin puntos de temperatura (gris): {municipios_sin} ({porcentaje_sin:.2f}%)")
+    #print(f"Municipios con puntos de temperatura (verde): {municipios_con} ({porcentaje_con:.2f}%)")
+    #print(f"Municipios sin puntos de temperatura (gris): {municipios_sin} ({porcentaje_sin:.2f}%)")
 
 #-------------------------Leer el shapefile de uso de suelo
+"""
+
 
     
     extract_zip(ZIP_USO_SUELO, EXTRACTED_USO_SUELO)
@@ -72,6 +74,8 @@ def main():
     gdf_suelo = load_shapefile(shp_path_suelo)
     print(f"Total de polígonos de uso de suelo en shapefile: {len(gdf_suelo)}")
     print(gdf_suelo.head(3))
+    print(gdf_suelo.columns)
+    """
     gdf_suelo = gdf_suelo.to_crs("EPSG:32614")
     gdf_municipios = gdf_municipios.to_crs("EPSG:32614")
     #print(gdf_suelo['DESCRIPCIO'].unique())
@@ -135,7 +139,7 @@ def main():
 
  
 
-
+"""
 
 if __name__ == "__main__":
     main()
