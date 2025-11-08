@@ -3,6 +3,9 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from .calculos import aplicar_confianza, calcular_tda
+from backend.DB.conexion import leer_tabla, top_similares_sql
+
+
 
 def principales_similares(cvegeo: str, top_n: int = 10, preseleccion: int = 40):
     """
@@ -18,72 +21,71 @@ def principales_similares(cvegeo: str, top_n: int = 10, preseleccion: int = 40):
     # -------------------------------
     # Cargar matrices
     # -------------------------------
-    matriz_similitud = pd.read_parquet("/Users/lorenasolis/EstInv/data/matriz/matriz_larga.parquet")
-    matriz_confianza = pd.read_parquet("/Users/lorenasolis/EstInv/data/matriz/confianza_matrix_larga.parquet")
-    tabla_muni = pd.read_parquet("/Users/lorenasolis/EstInv/data/tabla_municipios.parquet")
+
+    matriz_confianza = leer_tabla("matriz_confianza")
+    tabla_muni = leer_tabla("municipios")
+    similares = top_similares_sql(cvegeo=cvegeo, top_n=preseleccion)
 
     # -------------------------------
     # 2️⃣ Filtrar filas donde aparece el municipio
     # -------------------------------
-    similares = matriz_similitud[
-        (matriz_similitud["CVEGEO_ORIGEN"] == cvegeo) |
-        (matriz_similitud["CVEGEO_DESTINO"] == cvegeo)
-    ].copy()
+
 
     # Identificar el "otro" municipio en cada fila
     similares["municipio_similar"] = similares.apply(
-        lambda row: row["CVEGEO_DESTINO"] if row["CVEGEO_ORIGEN"] == cvegeo else row["CVEGEO_ORIGEN"],
+        lambda row: row["cvegeo_destino"] if row["cvegeo_origen"] == cvegeo else row["cvegeo_origen"],
         axis=1
     )
+
 
     # -------------------------------
     # Seleccionar preseleccionados por similitud
     # -------------------------------
-    similares_top = similares.sort_values("SIMILITUD", ascending=False).drop_duplicates(subset=["municipio_similar"]).head(preseleccion)
+    similares_top = similares.sort_values("similitud", ascending=False).drop_duplicates(subset=["municipio_similar"]).head(preseleccion)
 
     # -------------------------------
     # Buscar confianza solo de los preseleccionados
     # -------------------------------
     confianza_subset = matriz_confianza[
-        matriz_confianza["Municipio_Principal"].isin(similares_top["municipio_similar"]) &
-        (matriz_confianza["Municipio"] == cvegeo)
-    ][["Municipio_Principal", "Confianza"]]
+        matriz_confianza["municipio_principal"].isin(similares_top["municipio_similar"]) &
+        (matriz_confianza["municipio"] == cvegeo)
+    ][["municipio_principal", "confianza"]]
 
     similares_top = similares_top.merge(
         confianza_subset,
         left_on="municipio_similar",
-        right_on="Municipio_Principal",
+        right_on="municipio_principal",
         how="left"
     )
 
     # Si alguna confianza falta, asumimos 0
-    similares_top["Confianza"] = similares_top["Confianza"].fillna(0)
+    similares_top["confianza"] = similares_top["confianza"].fillna(0)
 
     # -------------------------------
     # Calcular puntaje ponderado (similitud 0-100)
     # -------------------------------
-    similares_top["PUNTAJE"] = 0.5 * (similares_top["SIMILITUD"] * 100) + 0.5 * similares_top["Confianza"]
+    similares_top["PUNTAJE"] = 0.5 * (similares_top["similitud"] * 100) + 0.5 * similares_top["confianza"]
 
     # -------------------------------
     # Ordenar y tomar top N
     # -------------------------------
-    top_similares = similares_top[similares_top["Confianza"] > 0]
+    top_similares = similares_top[similares_top["confianza"] > 0]
     top_similares = top_similares.sort_values("PUNTAJE", ascending=False).head(top_n)
 
     # -------------------------------
     # Merge con nombres de municipios
     # -------------------------------
     top_similares = top_similares.merge(
-        tabla_muni[["CVEGEO", "NOMGEO", "NOM_ENT"]],
+        tabla_muni[["cvegeo", "nomgeo", "nombre_ent"]],
         left_on="municipio_similar",
-        right_on="CVEGEO",
+        right_on="cvegeo",
         how="left"
     )
 
     # -------------------------------
     # Selección final de columnas
     # -------------------------------
-    top_similares["SIMILITUD_%"] = top_similares["SIMILITUD"] * 100
+    top_similares["SIMILITUD_%"] = top_similares["similitud"] * 100
 
     top_similares = (
         top_similares
@@ -93,7 +95,7 @@ def principales_similares(cvegeo: str, top_n: int = 10, preseleccion: int = 40):
     )
     top_similares.index += 1
 
-    return top_similares[["municipio_similar", "NOMGEO", "NOM_ENT", "SIMILITUD_%", "Confianza", "PUNTAJE"]].reset_index(drop=True)
+    return top_similares[["municipio_similar", "nomgeo", "nombre_ent", "SIMILITUD_%", "confianza", "PUNTAJE"]].reset_index(drop=True)
 
 
 
@@ -101,22 +103,20 @@ def obtener_preseleccion(cvegeo: str, preseleccion: int = 40):
     """
     Devuelve los N municipios más similares al municipio base según la matriz de similitud.
     """
-    matriz_similitud = pd.read_parquet("/Users/lorenasolis/EstInv/data/matriz/matriz_larga.parquet")
+ 
     
     # Filtrar filas donde aparece el municipio
-    similares = matriz_similitud[
-        (matriz_similitud["CVEGEO_ORIGEN"] == cvegeo) |
-        (matriz_similitud["CVEGEO_DESTINO"] == cvegeo)
-    ].copy()
+    similares = top_similares_sql(cvegeo=cvegeo, top_n=preseleccion)
+
 
     # Identificar el "otro" municipio
     similares["municipio_similar"] = similares.apply(
-        lambda row: row["CVEGEO_DESTINO"] if row["CVEGEO_ORIGEN"] == cvegeo else row["CVEGEO_ORIGEN"],
+        lambda row: row["cvegeo_destino"] if row["cvegeo_origen"] == cvegeo else row["cvegeo_origen"],
         axis=1
     )
 
     # Top N por similitud
-    top_preseleccion = similares.sort_values("SIMILITUD", ascending=False)\
+    top_preseleccion = similares.sort_values("similitud", ascending=False)\
                                 .drop_duplicates(subset=["municipio_similar"])\
                                 .head(preseleccion)
     
@@ -129,23 +129,21 @@ def expandir_top(top_ponderado: pd.DataFrame, cvegeo: str, expand_n: int = 3):
     """
     Para cada top 10 municipio, busca sus top 'expand_n' similares y calcula tabla top 30.
     """
-    matriz_similitud = pd.read_parquet("/Users/lorenasolis/EstInv/data/matriz/matriz_larga.parquet")
+    
     
     municipios_base = top_ponderado["municipio_similar"].tolist()
     similares_expandidos = []
 
     for muni in municipios_base:
-        subset = matriz_similitud[
-            (matriz_similitud["CVEGEO_ORIGEN"] == muni) |
-            (matriz_similitud["CVEGEO_DESTINO"] == muni)
-        ].copy()
+        subset = top_similares_sql(cvegeo=muni, top_n=expand_n)
+
 
         subset["municipio_similar"] = subset.apply(
-            lambda row: row["CVEGEO_DESTINO"] if row["CVEGEO_ORIGEN"] == muni else row["CVEGEO_ORIGEN"],
+            lambda row: row["cvegeo_destino"] if row["cvegeo_origen"] == muni else row["cvegeo_origen"],
             axis=1
         )
 
-        top_expand = subset.sort_values("SIMILITUD", ascending=False)\
+        top_expand = subset.sort_values("similitud", ascending=False)\
                            .drop_duplicates(subset=["municipio_similar"])\
                            .head(expand_n)
         
@@ -175,20 +173,19 @@ def calcular_top_final(cvegeo: str, top_n: int = 10):
     top30 = calcular_tda(cvegeo, top30)
     
     # Paso 6: Puntaje final: 0.25 similitud + 0.50 TDA + 0.25 confianza
-    top30["PUNTAJE_FINAL"] = 100 * (0.25 * (top30["SIMILITUD"]*100) + 0.50 * top30["TDA"]*100 + 0.25 * top30["Confianza"]) / 100
+    top30["PUNTAJE_FINAL"] = 100 * (0.25 * (top30["similitud"]*100) + 0.50 * top30["TDA"]*100 + 0.25 * top30["confianza"]) / 100
 
         # --- Agregar nombres y formato ---
-    tabla_muni = pd.read_parquet("/Users/lorenasolis/EstInv/data/tabla_municipios.parquet")
-
+    tabla_muni = leer_tabla("municipios")
     top30 = top30.merge(
-        tabla_muni[["CVEGEO", "NOMGEO", "NOM_ENT"]],
+        tabla_muni[["cvegeo", "nomgeo", "nombre_ent"]],
         left_on="municipio_similar",
-        right_on="CVEGEO",
+        right_on="cvegeo",
         how="left"
     )
 
     # Crear la columna en porcentaje
-    top30["SIMILITUD_%"] = (top30["SIMILITUD"] * 100).round(2)
+    top30["SIMILITUD_%"] = (top30["similitud"] * 100).round(2)
     top30 = (
         top30
         .sort_values("PUNTAJE_FINAL", ascending=False)
