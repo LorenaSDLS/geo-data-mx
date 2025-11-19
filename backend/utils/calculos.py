@@ -192,3 +192,199 @@ def similitud_escala(x, y):
         return 0.0
     return 1 - abs(x - y)  # x e y normalizados entre 0 y 1
 
+
+
+"""
+#comando para correrlo: streamlit run frontend/app.py
+#comando para correrlo: streamlit run frontend/app.py
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import streamlit as st
+import pandas as pd
+from backend.utils.analysis import principales_similares, municipios_sin_info, municipios_secundarios
+from streamlit_folium import st_folium
+from backend.DB.conexion import leer_tabla, leer_geografia, estadisticas_generales_cultivos
+import streamlit as st
+import geopandas as gpd
+import folium
+from streamlit_folium import st_folium
+
+from frontend.diseño import aplicar_estilos
+
+# Aplicar los estilos
+aplicar_estilos()
+
+st.title("Detección de municipios similares")
+
+
+
+# ---------------- Pantalla "Inicio" ----------------
+if pagina == "Inicio":
+    st.header("Resumen agrícola nacional")
+
+    resultado = estadisticas_generales_cultivos()
+
+    if resultado[0] is None:
+        st.error("No hay datos disponibles")
+    else:
+        df_top10, df_anual, fig_top10, fig_anual = resultado
+
+        st.subheader("Top 10 cultivos más producidos (10 años)")
+        st.dataframe(df_top10)
+        st.pyplot(fig_top10)
+
+        st.subheader("Producción agrícola total por año")
+        st.dataframe(df_anual)
+        st.pyplot(fig_anual)
+
+    st.stop()  # ⛔ NO SIGUE A LA OTRA PANTALLA
+
+
+tabla_muni = leer_tabla("municipios")
+info_muni = leer_tabla("info_municipios")
+
+# ---- Sidebar: Selección de estado y municipio ----
+pagina = st.sidebar.radio(
+    "Navegación:",
+    ["Inicio", "Buscador de municipios"]
+)
+estado_sel = st.sidebar.selectbox("Selecciona un estado", sorted(tabla_muni["nombre_ent"].unique()))
+municipios_estado = tabla_muni[tabla_muni["nombre_ent"] == estado_sel]["nomgeo"].unique()
+municipio_sel = st.sidebar.selectbox("Selecciona un municipio", sorted(municipios_estado))
+
+# ---- Botón: Buscar información del municipio ----
+if st.sidebar.button("Consultar información del municipio"):
+    # Buscar el CVEGEO del municipio seleccionado
+    fila = tabla_muni[
+        (tabla_muni["nombre_ent"] == estado_sel) &
+        (tabla_muni["nomgeo"] == municipio_sel)
+    ]
+
+    cvegeo = fila.iloc[0]["cvegeo"]
+        # Guardar en session_state
+    st.session_state["cvegeo_seleccionado"] = cvegeo
+    st.session_state["municipio_seleccionado_nombre"] = municipio_sel
+    st.session_state["consulta_realizada"] = True
+
+
+    # Buscar si el municipio tiene info
+# ---- Renderizar resultados si ya se hizo una consulta ----
+if st.session_state.get("consulta_realizada", False):
+    cvegeo = st.session_state["cvegeo_seleccionado"]
+    fila_info = info_muni[info_muni["cvegeo"] == cvegeo]
+
+    if fila_info.empty or not bool(fila_info.iloc[0].get("tiene_info", False)):
+        st.error("Este municipio no cuenta con información disponible.")
+        #st.subheader("Municipios cercanos con información disponible:")
+        cercanos, mapa, cult_gen, cult_anual, graf1, graf2 = municipios_sin_info(cvegeo)
+        municipio_actual = st.session_state.get("municipio_seleccionado_nombre", municipio_sel)
+        st.subheader(f"Municipios cercanos a {municipio_actual}:")
+      
+        #st.dataframe(cercanos)
+        cols = st.columns(3)
+        for idx, row in cercanos.iterrows():
+            muni = row["Municipio"]
+            estado = row["Estado"]
+            cve = row["cvegeo"]
+            distancia = round(row["Distancia (km)"], 2)
+            texto_boton = f"{estado} — {muni} — {distancia}"
+
+            col = cols[idx % 3]   # 👉 coloca los botones en filas de 3
+            with col:
+
+                if st.button(texto_boton, key=f"sim_{cve}_{idx}"):
+                    st.session_state["cvegeo_seleccionado"] = cve
+                    st.session_state["municipio_seleccionado_nombre"] = muni
+                    st.session_state["consulta_realizada"] = True
+                    st.rerun()
+
+        st.subheader("Mapa de municipios cercanos con información disponible:")
+        st_folium(mapa, width=600, height=400, key=f"mapa_{cvegeo}")
+                                #cosas de cultivos
+        st.subheader("Producción total por cultivo")
+        st.dataframe(cult_gen)
+        st.pyplot(graf1)
+
+        st.subheader("Producción anual")
+        st.dataframe(cult_anual)
+        st.pyplot(graf2)
+
+    else:
+        es_principal = bool(fila_info.iloc[0].get("es_principal", False))
+
+        if es_principal:
+            st.success("🌾 Municipio con información y cultivo.")
+            #top_similares, mapa = principales_similares(cvegeo, top_n=10)
+            top_similares, mapa, cult_gen, cult_anual, graf1, graf2 = principales_similares(cvegeo, top_n=10)
+            municipio_actual = st.session_state.get("municipio_seleccionado_nombre", municipio_sel)
+            st.subheader(f"Municipios similares a {municipio_actual}:")
+
+
+            #st.subheader("Municipios similares:")
+            #st.dataframe(top_similares)
+            cols = st.columns(3)
+            for idx, row in top_similares.iterrows():
+                muni = row["Municipio"]
+                estado = row["Estado"]
+                cve = row["cvegeo"]
+                similarity = round(row["Similitud"], 2)
+                texto_boton = f"{estado} — {muni} — {similarity}%"
+                col = cols[idx % 3]   # 👉 coloca los botones en filas de 3
+                with col:
+
+                    if st.button(texto_boton, key=f"sim_{cve}_{idx}"):
+                        st.session_state["cvegeo_seleccionado"] = cve
+                        st.session_state["municipio_seleccionado_nombre"] = muni
+                        st.session_state["consulta_realizada"] = True
+                        st.rerun()
+
+            st.subheader("Mapa de municipios similares:")
+            st_folium(mapa, width=600, height=400, key=f"mapa_{cvegeo}")
+            #cosas de cultivos
+            st.subheader("Producción total por cultivo")
+            st.dataframe(cult_gen)
+            st.pyplot(graf1)
+
+            st.subheader("Producción anual")
+            st.dataframe(cult_anual)
+            st.pyplot(graf2)
+
+
+        else:
+            st.info("Municipio con información.")
+            top_similares, mapa, cult_gen, cult_anual, graf1, graf2 = municipios_secundarios(cvegeo, top_n=10)
+            municipio_actual = st.session_state.get("municipio_seleccionado_nombre", municipio_sel)
+            st.subheader(f"Municipios similares a {municipio_actual}:")
+            #st.dataframe(top_similares)
+            cols = st.columns(3)
+            for idx, row in top_similares.iterrows():
+                muni = row["Municipio"]
+                estado = row["Estado"]
+                cve = row["cvegeo"]
+                similarity = round(row["Similitud"], 2)
+                texto_boton = f"{estado} — {muni} — {similarity}%"
+                col = cols[idx % 3]   # 👉 coloca los botones en filas de 3
+                with col:
+
+                    if st.button(texto_boton, key=f"sim_{cve}_{idx}"):
+                        st.session_state["cvegeo_seleccionado"] = cve
+                        st.session_state["municipio_seleccionado_nombre"] = muni
+                        st.session_state["consulta_realizada"] = True
+                        st.rerun()
+              
+
+            st.subheader("Mapa de municipios similares:")
+            st_folium(mapa, width=600, height=400, key=f"mapa_{cvegeo}")
+                        #cosas de cultivos
+            st.subheader("Producción total por cultivo")
+            st.dataframe(cult_gen)
+            st.pyplot(graf1)
+
+            st.subheader("Producción anual")
+            st.dataframe(cult_anual)
+            st.pyplot(graf2)
+
+
+
+"""

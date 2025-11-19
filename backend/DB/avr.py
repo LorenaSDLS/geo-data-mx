@@ -5,8 +5,22 @@ import pandas as pd
 engine = create_engine("postgresql+psycopg2://postgres:B-4789072@localhost:5432/agroanalytics")
 inspector = inspect(engine)
 
-# Lista todas las tablas
-tablas = inspector.get_table_names()
-print("Tablas en la base de datos:")
-for t in tablas:
-    print("-", t)
+
+# Cargar CSV
+df = pd.read_csv("/Users/lorenasolis/EstInv/backend/DB/cultivos_anuales_largo.csv")
+
+# Renombrar columnas para postgres
+df = df.rename(columns={
+    "Producción": "produccion",
+    "Año": "anio"
+})
+
+# Subir a PostgreSQL
+df.to_sql(
+    "muni_cultivos",
+    engine,
+    if_exists="replace",   # replace = borra y crea de nuevo
+    index=False
+)
+
+print("✔ Tabla 'muni_cultivos' creada y cargada correctamente")

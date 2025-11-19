@@ -107,3 +107,4 @@ class Clima(Base):
     tmax_diciembre = Column(Float)
     tmin_diciembre = Column(Float)
 
+

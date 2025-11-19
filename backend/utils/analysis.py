@@ -7,7 +7,7 @@ from shapely import wkb
 from sqlalchemy import create_engine
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from backend.DB.conexion import leer_tabla, top_similares_sql, leer_datos_edaficos, mapa_municipios_top
+from backend.DB.conexion import leer_tabla, top_similares_sql, leer_datos_edaficos, mapa_municipios_top, datos_cultivos_municipio
 import numpy as np
 from backend.utils.similitudes import *
 from backend.DB.geografia import *
@@ -48,8 +48,12 @@ def principales_similares(cvegeo: str, top_n: int = 10):
     #  Crear mapa usando la lista de CVEGEO
     lista_cvegeo = resultado_principales["cvegeo"].tolist()
     mapa = mapa_municipios_top(cvegeo, lista_cvegeo)
+    
+    cultivos_general, cultivos_anual, graf1, graf2 = datos_cultivos_municipio(cvegeo)
+    return resultado_principales, mapa, cultivos_general, cultivos_anual, graf1, graf2
 
-    return resultado_principales, mapa
+
+    #return resultado_principales, mapa
 
 #función en caso de que el municipio seleccionado no tenga información
 def municipios_sin_info(cvegeo_base: str, min_municipios: int = 10, incremento_km: float = 5.0):
@@ -74,7 +78,9 @@ def municipios_sin_info(cvegeo_base: str, min_municipios: int = 10, incremento_k
     else:
         mapa = None  # No hay municipios, no se crea mapa
 
-    return tabla_limpia, mapa
+    cultivos_general, cultivos_anual, graf1, graf2 = datos_cultivos_municipio(cvegeo_base)
+    return tabla_limpia, mapa, cultivos_general, cultivos_anual, graf1, graf2
+    #return tabla_limpia, mapa
 
 #función en caso de que el municipio seleccionado tenga información pero no sea principal
 
@@ -135,4 +141,8 @@ def municipios_secundarios(cvegeo_base: str, top_n: int = 10):
     lista_cvegeo = resultado_final["cvegeo"].tolist()
     mapa = mapa_municipios_top(cvegeo_base, lista_cvegeo)
 
-    return resultado_final, mapa
+    cultivos_general, cultivos_anual, graf1, graf2 = datos_cultivos_municipio(cvegeo_base)
+    return resultado_final, mapa, cultivos_general, cultivos_anual, graf1, graf2
+
+
+    #return resultado_final, mapa
