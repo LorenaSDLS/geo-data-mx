@@ -1,0 +1,91 @@
+services:
+  postgres_fle:
+    image: postgis/postgis:16-3.4
+    container_name: postgres_fle
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD:  ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5434:5432"
+    volumes:
+      #- ./data:/var/lib/postgresql/data # es para persistencia de datos
+      - ./mi_base.sql:/docker-entrypoint-initdb.d/mi_base.sql
+
+  adminer:
+    image: adminer
+    container_name: adminer_fle
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres_fle
+
+volumes:
+  db_data:
+
+# backend:
+#     build: ./backend
+#     container_name: backend_fle
+#     ports:
+#       - "5000:5000"
+#     environment:
+#       DATABASE_URL: "postgresql://admin:admin123@postgres_fle:5432/fle_db"
+#     depends_on:
+#       - postgres_fle
+
+#   frontend:
+#     build: ./frontend
+#     container_name: frontend_fle
+#     ports:
+#       - "3000:80"
+#     depends_on:
+#       - backend
+
+#   adminer:
+#     image: adminer
+#     container_name: adminer_fle
+#     ports:
+#       - "8080:8080"
+#     depends_on:
+#       - postgres_fle
+
+
+
+#este es el string de conexión a la base de datos en el backend
+#DATABASE_URL=postgresql://admin:admin123@postgres_fle:5432/fle_db
+
+
+#esto lo corres en la terminal en la carpeta donde esté el docker-compose.yml
+#este ayuda a levantar los contenedores definidos 
+#docker compose up --build
+
+
+#subirlo a internet:
+# DigitalOcean (la opción más simple)
+# Render (automática y económica)
+# AWS ECS (más empresarial)
+# Google Cloud Run
+# O incluso un VPS tradicional
+
+
+# Ejemplo de Dockerfile para el backend (backend/Dockerfile)
+# FROM python:3.10
+# WORKDIR /app
+# COPY requirements.txt .
+# RUN pip install -r requirements.txt
+# COPY . .
+# CMD ["python", "run.py"]
+
+
+# Ejemplo de Dockerfile para el frontend (frontend/Dockerfile)
+# FROM node:18 as build
+# WORKDIR /app
+# COPY package*.json ./
+# RUN npm install
+# COPY . .
+# RUN npm run build
+# FROM nginx:alpine
+# COPY --from=build /app/dist /usr/share/nginx/html
+
+
+
