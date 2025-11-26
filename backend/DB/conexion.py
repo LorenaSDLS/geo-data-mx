@@ -262,8 +262,6 @@ def ranking_estados():
 
     if df.empty:
         return pd.DataFrame(columns=["Estado", "Produccion"])
-    df.columns = df.columns.str.strip().str.lower()
-
 
     df_rank = (
         df.groupby("estado")["produccion"]
@@ -306,3 +304,18 @@ def cantidad_cultivos_por_anio():
 
     df_count.rename(columns={"anio": "Año", "nomcultivo": "Cultivos"}, inplace=True)
     return df_count
+
+
+def leer_caracteristicas_municipio(cvegeo, columnas=None):
+    """Devuelve las características de un municipio desde la base de datos.
+    Si columnas=None, devuelve todas las columnas relevantes.
+    """
+    if columnas is None:
+        columnas = ["cvegeo_muni", "ALTITUD","PH","MO","ARENA","ARCILLA","LIMOS"]
+        cols_str = ", ".join(columnas)
+        query = f"SELECT {cols_str} FROM edafologia WHERE cvegeo_muni = '{cvegeo}'"
+        df = pd.read_sql(query, engine)
+        if df.empty:
+            return None
+        df = df.rename(columns={"cvegeo_muni": "cvegeo"})
+        return df.iloc[0]
