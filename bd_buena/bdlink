@@ -1,0 +1,33 @@
+# Base de datos del proyecto
+
+Para restaurar la base en PostgreSQL:
+
+Descarga el archivo desde Google Drive https://drive.google.com/drive/u/0/folders/1TPuenaq37rqqucFgdq0V6r2fmO8Eu01p
+
+Opción A (la más recomendada):
+Usando pgAdmin
+Teniendo ya descargado el archivo del drive. 
+
+En pgAdmin, crear una base vacía:
+
+sql
+CREATE DATABASE proyecto;
+Clic derecho sobre esa base → Restore…
+
+Si es .backup, seleccionan formato Custom.
+
+Si es .sql, abren Query Tool, cargan el archivo y lo ejecutan.
+
+Opción B Usando terminal
+Si prefieren consola:
+
+Para .sql:
+
+bash
+psql -U postgres -d cierre_agricola -f cierre_agricola.sql
+Para .backup:
+
+bash
+pg_restore -U postgres -d cierre_agricola cierre_agricola.backup
+
+y listo :) 
