@@ -1,0 +1,13 @@
+# Ignorar carpeta de datos de Postgres
+data/
+
+# Ignorar archivo de variables de entorno
+.env
+
+# Ignorar archivos temporales de Docker
+*.log
+*.tmp
+
+# Ignorar archivos de sistema
+.DS_Store
+Thumbs.db
