@@ -5,6 +5,8 @@ from shapely import wkb
 import folium
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from sqlalchemy import text
+
 
 
 
@@ -161,6 +163,9 @@ def datos_cultivos_municipio(cvegeo: str):
         .reset_index()
         .sort_values("produccion", ascending=False)
     )
+    df_general["produccion"] = df_general["produccion"].map(lambda x: f"{x:.2f}")
+
+
 
     # --- 2. AGRUPACIÓN ANUAL ---
     df_anual = (
@@ -169,6 +174,7 @@ def datos_cultivos_municipio(cvegeo: str):
         .reset_index()
         .sort_values("anio")
     )
+    df_anual["produccion"] = df_anual["produccion"].map(lambda x: f"{x:.2f}")
 
     # --- 3. GRÁFICA: TOTAL POR CULTIVO ---
     # --- 3. GRÁFICA: TOTAL POR CULTIVO ---
@@ -319,3 +325,53 @@ def leer_caracteristicas_municipio(cvegeo, columnas=None):
             return None
         df = df.rename(columns={"cvegeo_muni": "cvegeo"})
         return df.iloc[0]
+    
+
+def obtener_lista_cultivos():
+    """Regresa un DataFrame con todos los cultivos únicos y cuántas veces aparecen."""
+    query = """
+        SELECT nomcultivo, COUNT(*) as registros
+        FROM muni_cultivos
+        GROUP BY nomcultivo
+        ORDER BY nomcultivo
+    """
+    df = pd.read_sql(query, engine)
+    return df
+
+def obtener_info_cultivos_pro():
+    """
+    Regresa un DataFrame con todos los cultivos y estadísticas básicas:
+    - número de registros
+    - producción total
+    - municipios distintos
+    - años distintos
+    """
+    query = """
+        SELECT 
+            nomcultivo,
+            COUNT(*) AS registros,
+            SUM(produccion) AS produccion_total,
+            COUNT(DISTINCT cvegeo) AS municipios,
+            COUNT(DISTINCT anio) AS anios
+        FROM muni_cultivos
+        GROUP BY nomcultivo
+        ORDER BY nomcultivo
+    """
+    df = pd.read_sql(query, engine)
+    return df
+
+def obtener_municipios_por_cultivo(nombre_cultivo):
+    query = text("""
+    SELECT 
+        m.cvegeo,
+        m.nomgeo,
+        m.nombre_ent,
+        c.produccion
+    FROM muni_cultivos c
+    JOIN municipios m ON m.cvegeo = c.cvegeo
+    WHERE c.nomcultivo = :cultivo
+    """)
+
+    df = pd.read_sql(query, engine, params={"cultivo": nombre_cultivo})
+    return df
+
